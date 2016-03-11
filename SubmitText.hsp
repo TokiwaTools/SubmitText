@@ -1,0 +1,256 @@
+#include "hspext.as"
+#include "encode.as"
+#include "inim2.hsp"
+#include "user32.as"
+#define WM_RESIZE 0x5
+#epack "encode.as"
+#epack "hspext.as"
+#epack "inim2.hsp"
+#epack "user32.as"
+#packopt name "SubmitText"
+#packopt hide 1
+
+version = "1.0"
+
+//コメント用変数
+comment = ""		//コメント文字列
+filename = ""		//ファイル名
+explanation = ""	//説明文
+grade = ""			//年
+class = ""			//組
+number = ""			//番号
+first_name = ""		//名
+last_name = ""		//姓
+
+//座標
+dim txtboxX, 2
+
+//ファイルパス
+pdeEditor = ""		//PDEエディタ
+savedPath = dir_cur	//保存フォルダパス
+filePath = ""		//pdeファイルパス
+
+//値の保存用
+pdeEditorID = 0
+dim handleN, 2
+
+*scrcfg
+	resized = 0
+
+	screen 0, ginfo_dispx, ginfo_dispy, 2, , , 810, 410
+	GetWindowLong hwnd, -16
+	SetWindowLong hwnd, -16, stat | $10000 | $40000
+	width 810, 410
+	txtboxX(0) = ginfo_winx/2-200
+	handleN(0) = hwnd
+	oncmd gosub *resize, WM_RESIZE
+
+	screen 1, ginfo_dispx, ginfo_dispy, 2, , , 810, 410
+	width 810, 410
+	txtboxX(1) = ginfo_winx/2-200
+	handleN(1) = hwnd
+	oncmd gosub *resize, WM_RESIZE
+	onexit *exit
+	goto *init
+
+*init
+	INIInit "config.ini"
+	exist "config.ini"
+	if (strsize == -1) {
+		tmp = ""
+		notesel tmp
+		notesave "config.ini"
+		gosub *saveConfig
+		dialog "初回起動時は初期設定をしてください"
+		goto *config
+	} else {
+		gosub *loadConfig
+		goto *main
+	}
+
+*loadConfig
+	if INIGet("Comment", "grade") :	grade = refstr
+	if INIGet("Comment", "class") : class = refstr
+	if INIGet("Comment", "number") : number = refstr
+	if INIGet("Comment", "first_name") : first_name = refstr
+	if INIGet("Comment", "last_name") : last_name = refstr
+	if INIGet("Path", "pdeEditor") : pdeEditor = refstr
+	if INIGet("Path", "savedPath") : savedPath = refstr
+	return
+	//dialog "Loaded Config"
+
+*resize
+	resized = 1
+	txtboxX(ginfo(24)) = ginfo_winx/2-200
+	return
+
+*main
+	EnableWindow handleN(0), 1
+	gsel 1, -1
+	gsel 0, 1
+	title "Submit Text"
+	redraw 0
+	cls
+	font "メイリオ",14, 16
+	pos 5, 5
+	button goto "設定", *config
+	pos txtboxX(0)-100, 100
+	mes "ファイル名:\n"
+	mes "説明文:"
+	pos txtboxX(0), 100
+	input filename, 500, 20, 64
+	pos txtboxX(0), 143
+	input explanation, 500, 20, 64
+	pos txtboxX(0), 180
+	button gosub "作成", *checkPara
+	pos 10, ginfo_winy-60
+	mes "保存フォルダ:"
+	pos 120, ginfo_winy-60
+	input savedPath, ginfo_winx-200, 20
+	pos ginfo_winx-70, ginfo_winy-62
+	button goto "参照", *changeDir
+	pos ginfo_winx-60, 5
+	mes "ver." + version
+	pos ginfo_winx-215, ginfo_winy-25
+	mes "created by ときわ (@tkw_fms)"
+	redraw 1
+
+	repeat
+	if (resized = 1) {
+		resized = 0
+		goto *main
+	}
+	wait 10
+	loop
+
+*config
+	EnableWindow handleN(0), 0
+	gsel 1, 1
+	title "設定"
+	redraw 0
+	cls
+	font "メイリオ",14, 16
+	pos txtboxX(1)-130, 100
+	mes "所属･名前:"
+	pos txtboxX(1)+5, 100
+	mes "年"
+	pos txtboxX(1)-20, 100
+	input grade, 20, 20, 1
+	pos txtboxX(1)+50, 100
+	mes "組"
+	pos txtboxX(1)+25, 100
+	input class, 20, 20, 1
+	pos txtboxX(1)+95, 100
+	mes "番"
+	pos txtboxX(1)+70, 100
+	input number, 20, 20, 2
+	pos txtboxX(1)+135, 100
+	mes "氏"
+	pos txtboxX(1)+155, 100
+	input last_name, 155, 20, 64
+	pos txtboxX(1)+320, 100
+	mes "名"
+	pos txtboxX(1)+340, 100
+	input first_name, 150, 20, 64
+	pos txtboxX(1)-130, 130
+	mes "エディタパス:"
+	pos txtboxX(1)-20, 130
+	input pdeEditor, 440, 20
+	pdeEditorID = stat
+	pos txtboxX(1)+430, 128
+	button goto "参照", *selectEditor
+	pos txtboxX(1)-130, 160
+	font "メイリオ", 12, 16
+	mes "　※標準エディタを使用している場合､processing.exeを指定してください"
+	pos ginfo_winx/2-40, ginfo_winy-30
+	button goto "OK", *chkComment
+	redraw 1
+
+	repeat
+	if (resized = 1) {
+		resized = 0
+		goto *config
+	}
+	wait 10
+	loop
+
+*createPDE
+	mkdir savedPath + "\\" + filename
+	comment = "//" + filename + ".pde\n" + "//" + explanation + "\n" + "//" + str(gettime(0)) + "/" + str(gettime(1)) + "/" + str(gettime(3)) + "\n" + "//" + grade + "-" + class + "-" + number + " " + last_name + " " + first_name
+	sjis2utf8n comment, comment	//Shift-JIS→UTF-8に変換
+	filePath = savedPath + "\\" + filename + "\\" + filename + ".pde"
+	notesel comment
+	notesave filePath
+	dialog "ファイルが生成されました\n" + filePath
+	dialog "ファイルを開きますか？",2
+	if (stat == 6){
+		gosub *openPDE
+	}
+	return
+
+*openPDE
+	exist pdeEditor
+	if (pdeEditor == ""){
+		dialog "エディタが選択されていません", 1
+	} else : if (strsize == -1) {
+		dialog "エディタは存在しません", 1
+	} else {
+		exec pdeEditor + " " + filePath
+	}
+	return
+
+*changeDir
+	selfolder savedPath, "保存先を選択してください"
+	goto *main
+
+*selectEditor
+	dialog "exe", 16, "実行ファイル"
+	if (stat == 1){
+		objprm pdeEditorID, refstr
+	}
+	goto *config
+
+*chkComment
+	if (grade == "" | class == "" | number == "" | first_name == "" | last_name == "") {
+		dialog "所属と名前を入力してください", 1
+		goto *config
+	}
+	goto *main
+
+*checkPara
+	if (filename = "") {
+		dialog "ファイル名を入力してください", 1
+		return
+	}
+	dirlist tmp, savedPath, 5
+	if (stat == 0) {
+		dialog "ファイルを生成できませんでした\n保存先が見つかりません", 1
+		return
+	}
+	dirlist tmp, savedPath + "\\" + filename, 5
+	if (stat == 1) {
+		dialog "ファイルを生成できませんでした\n保存先には同じ名前のフォルダが既に存在します", 1
+		return
+	}
+	
+	gosub *createPDE
+	return
+
+*saveConfig
+	INISet "Comment", "grade", grade
+	INISet "Comment", "class", class
+	INISet "Comment", "number", number
+	INISet "Comment", "last_name", last_name
+	INISet "Comment", "first_name", first_name
+	INISet "Path", "pdeEditor", pdeEditor
+	INISet "Path", "savedPath", savedPath
+	//dialog "Saved Config"
+	return
+
+*exit
+	if (wparam == 1) {
+		goto *main
+	} else {
+		gosub *saveConfig
+	}
+	end
