@@ -1,7 +1,9 @@
 # SubmitText
+
 プログラミング演習提出支援ツール
 
 ## Distinction
+
 + プログラミング演習において､提出するプログラムの冒頭に入れる4行のコメントを自動生成します
 ```java
 [例]
@@ -17,9 +19,11 @@
 ## Downloads
 
 ## Operating Environment
+
 Windows 10/8.1/8/7
 
 ## Development Environment
+
 Hot Soup Processor 3.4
 
 ## Usage
@@ -37,11 +41,11 @@ Hot Soup Processor 3.4
         編集 → コメント付与
 
 ## License
+
 [MIT License](https://github.com/TokiwaTools/SubmitText/blob/v1.1/LICENSE)
 
 ## Contact
-[Mail](tkw.4402@gmail.com)
 
-[Twitter](https://twitter.com/tkw_fms)
-
+[Mail](tkw.4402@gmail.com)  
+[Twitter](https://twitter.com/tkw_fms)  
 [HP](http://ntt_forpro.sokon.jp/)
