@@ -18,6 +18,9 @@
 
 ## Downloads
 
+[v1.1](https://github.com/TokiwaTools/SubmitText/releases/tag/v1.1)
+[v1.0](https://github.com/TokiwaTools/SubmitText/releases/tag/v1.0)
+
 ## Operating Environment
 
 Windows 10/8.1/8/7
