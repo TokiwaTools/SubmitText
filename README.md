@@ -37,3 +37,11 @@ Hot Soup Processor 3.4
         編集 → コメント付与
 
 ## License
+[MIT License](https://github.com/TokiwaTools/SubmitText/blob/v1.1/LICENSE)
+
+## Contact
+[Mail](tkw.4402@gmail.com)
+
+[Twitter](https://twitter.com/tkw_fms)
+
+[HP](http://ntt_forpro.sokon.jp/)
