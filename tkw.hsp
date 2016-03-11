@@ -1,0 +1,89 @@
+#include "BREGEXP.hsp"
+
+#module
+
+/*
+devidePath(var Path, int i)
+	フルパスを正規表現を利用し分割します
+	[引数]
+		Path:	文字列
+		i:		0: 一つ上の階層までのフルパスを取得
+				1: ファイル/フォルダ名を取得 (拡張子あり)
+				2: ファイル/フォルダ名を取得 (拡張子なし)
+	[戻り値] (str)
+		取得した文字列
+	[例]
+		str1 = "C:\Users\Guest\test.pde"
+		savedPath = devidePath(str1, 0)		→ "C:\Users\Guest"
+		filename1 = devidePath(str1, 1)		→ "test.pde"
+		filename2 = dividePath(str1, 2)		→ "test"
+
+checkPDE(var filename)
+	ファイル名がProcessingの条件を満たしているか判定します
+	[引数]
+		filename:	ファイル名
+	[戻り値] (int)
+		0: 不適
+		1: 適合
+*/
+
+#defcfunc dividePath var x, int i
+	if (x != "") {
+		a = BMatch(x, 0, "m#(.+)(\\\\[^.]+$)#")
+		savedPath = BMGetStr(1)
+		a = BMatch(x, 0, "m#[^\\\\]*$#")
+		filename = BMGetStr(0)
+		f = BMatch(filename, 0, "m#(.+)(\\.[^.]+$)#")
+		if (f != -1) {
+			g2A = BMGetStr(1)
+			f = BMatch(filename, 0, "m#(.+)(\\.[^.]+$)#")
+			g2B = BMGetStr(2)
+			f = BMatch(g2A, 0, "m#(.+)(\\.[^.]+$)#")
+			g3A = BMGetStr(1)
+			f = BMatch(g2A, 0, "m#(.+)(\\.[^.]+$)#")
+			g3B = BMGetStr(2)
+			if (g2B == g3B) {
+				filename2 = g3A
+			} else {
+				filename2 = g2A
+			}
+		} else {
+			filename2 = filename
+		}
+		switch i
+			case 0
+				return savedPath
+				swbreak
+			case 1
+				return filename
+				swbreak
+			case 2
+				return filename2
+				swbreak
+			default
+				return ""
+				swbreak
+		swend
+	}
+
+#defcfunc checkPDE var name
+	if (name = "") {
+		dialog "ファイル名を入力してください", 1
+		return 0
+	}
+	if (BMatch(name, 0, "m#[^\\x00-\\x7E\\xA1-\\xDF]#") != -1) {
+		dialog "ファイル名は英数字と一部の半角記号しか使えません", 1
+		return 0
+	} else {
+		if (strlen(name) >= 64) {
+			dialog "ファイル名は64文字以内にしてください", 1
+			return 0
+		}
+	}
+	if (BMatch(name, 0, "m#\\A\\d#") != -1) {
+		dialog "ファイル名の先頭は数字を使えません", 1
+		return 0
+	}
+	return 1
+
+#global

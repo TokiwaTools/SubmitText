@@ -1,0 +1,53 @@
+//\ / ? : * " > < |
+
+#include "BREGEXP.hsp"
+name = ""
+input name, 200, 60, 64
+objsize 150, 20
+button gosub "ファイル名(拡張子なし)抽出", *filename
+button gosub "保存フォルダ抽出", *savedPath
+button gosub "日本語(全角)判定", *exjapan
+button gosub "先頭が数字かどうか判定", *exnumber
+button gosub "ファイル名の条件判定", *exescape
+stop
+
+*filename
+	f = BMatch(name, 0, "m#[^\\\\]*$#")
+	g1 = BMGetStr(0)
+	f = BMatch(g1, 0, "m#(.+)(\\.[^.]+$)#")
+	g2A = BMGetStr(1)
+	f = BMatch(g1, 0, "m#(.+)(\\.[^.]+$)#")
+	g2B = BMGetStr(2)
+	f = BMatch(g2A, 0, "m#(.+)(\\.[^.]+$)#")
+	g3A = BMGetStr(1)
+	f = BMatch(g2A, 0, "m#(.+)(\\.[^.]+$)#")
+	g3B = BMGetStr(2)
+	if (g2B == g3B) {
+		g = g3A
+	} else {
+		g = g2A
+	}
+	dialog "入力:\n" + name + "\n出力:\n" + g
+	return
+
+*savedPath
+	a = BMatch(name, 0, "m#(.+)(\\\\[^.]+$)#")
+	b = BMGetStr(1)
+	dialog "入力:\n" + name + "\n出力:\n" + b
+	return
+
+*exjapan
+	c = BMatch(name, 0, "m#[^\\x00-\\x7E\\xA1-\\xDF]#")
+	dialog "入力:\n" + name + "\n出力:\n" + c
+	return
+
+*exnumber
+	d = BMatch(name, 0, "m#\\A\\d#")
+	dialog "入力:\n" + name + "\n出力:\n" + d
+	return
+
+*exescape
+	e = BMatch(name, 0, "m#[\\x5C]/?:*\"><|#")
+	dialog "入力:\n" + name + "\n出力:\n" + e
+	return
+

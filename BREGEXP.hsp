@@ -1,0 +1,257 @@
+/* BREGEXP.hsp */
+#ifndef mod_BRegExp
+#module mod_BRegExp
+
+#uselib "BREGEXP.DLL"
+// #uselib "BREGONIG.DLL"
+
+////////////////////////////////////////////////////////
+//  BREGEXP.DLL モジュール Ver 1.01  by 猫太→月影とも//
+////////////////////////////////////////////////////////
+// 2008.10.18 v1.01 ヘルプとサンプルがそれぞれビミョーに間違ってたので修正
+// 2006. 9.29 v1.00 公開
+
+//// 以下の命令を追加する。
+
+//// **** マッチ関連関数 ****
+//// 
+//// BMatch(対象変数, 開始位置, "m/～/[k][m]")
+////     正規表現によるパターンマッチを行い、マッチした位置を返す。
+////     デフォルトではInstr互換モードで開始位置からの相対位置を返す。
+////     常に先頭からの位置を返すようにも設定可能 → BRegInstrCompatibleMode 0
+////     kを付けると、文字列をSJisとして処理
+//// 
+//// 以下の関数群は、BMatch後、対象変数の内容が変更されるまで有効。
+//// エラーチェックをしていないので注意。
+//// n = 0 のとき全体、n = 1,2,3... のとき、n番目の()内を対象とする
+////
+//// BMGetStr(n)
+////     BMatchのパターンにおいてマッチした文字列を返す
+////
+//// BMGetPos(n)
+////     BMatchのパターンにおいてマッチした文字列の位置を返す
+////     Instr互換モードの設定の影響を受ける。
+////
+//// BMGetLen(n)
+////     BMatchのパターンにおいてマッチした文字列の長さを返す
+////
+//// BMGetNextPos()
+////     次に設定すべき検索開始位置を返す。
+////     Instr互換モードの影響を受ける。
+////
+////
+////
+//// **** 他の命令群 置換/変換/文字列分割 ****
+////
+//// BSubst 対象変数, "s/～/―/[k][m][g]"
+////     置換を行った回数が stat に返る
+////
+//// BTrans 対象変数, "tr/～/―/[k][m][c][d][s]"
+////     stat に 変換を行った回数が返る
+////
+//// BSplit 出力先配列変数, 対象変数, "m/～/[k][m]"
+////     PatternTextをデリミタとした文字列の分割。
+////     要素数が stat に返る。
+////
+//// BRegexpVersion
+////     refstr にバージョン文字列が返る
+////
+//// BRegGetErrorMsg
+////     refstr に最後に行った処理に対するエラー文字列が返る
+////
+//// BRegInstrCompatibleMode 0/1
+////     BMatch 関連関数の Instr互換モードの設定。
+////     1: instr互換(検索開始位置からの相対位置) - デフォルト
+////     0: 常に文字列変数先頭からの位置を返す
+////
+
+#func _BMatch "BMatch" sptr,int,int,sptr,int
+#func _BSubst "BSubst" sptr,int,int,sptr,int
+#func _BTrans "BTrans" sptr,int,int,sptr,int
+#func _BSplit "BSplit" sptr,int,int,int,sptr,int
+#func _BRegfree "BRegfree" int
+#func _BRegexpVersion "BRegexpVersion"
+
+#if 0
+    typedef struct bregexp {
+        0    const char *outp;    // BSubst 置換データの先頭ポインタ
+        1    const char *outendp;    // BSubst 置換データの最終ポインタ+1
+        2    const int  splitctr;    // BSplit 配列数
+        3    const char **splitp;    // BSplit データポインタ
+        4    int    rsv1;            // リザーブ　自由に使用可能 
+        5    char *parap;        // パターンデータポインタ
+        6    char *paraendp;        // パターンデータポインタ1
+        7    char *transtblp;    // BTrans 変換テーブルポインタ
+        8    char **startp;        // マッチしたデータの先頭ポインタ
+        9    char **endp;        // マッチしたデータの最終ポインタ+1
+        10    int nparens;        // パターンの中の() の数。 $1,$2, を調べるときに使用
+    } BREGEXP;
+#endif
+
+#deffunc BReg_SafeFree int _ptr // 解放 基本的に内部命令。
+    if _ptr : _BRegfree _ptr
+    return
+
+#defcfunc BMatch var target, int StartPostion, str PatternText
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+
+    pattern = PatternText
+    startPos = StartPostion
+
+    _BMatch varptr(pattern), varptr(target)+startPos, varptr(target)+strlen(target), varptr(pBregExp), varptr(BM_err_info)
+    if stat <= 0 : return -1
+    
+    dupptr BregExp, pBregExp, 44, vartype("int")
+    dup TargetString, target
+    BregExp_nParens = BregExp.10
+    dupptr BregExp_StartP, BregExp.8, BregExp.10*4+4, vartype("int")
+    dupptr BregExp_EndP, BregExp.9, BregExp.10*4+4, vartype("int")
+    
+    return BregExp_StartP - varptr(target) - startPos*CompatiMode
+
+#defcfunc BMGetStr int i 
+    if pBregExp = 0 : dialog "BREGEXP Error:\n 直前の操作がBMatchではありません" : return ""
+    if i>BregExp_nParens : return ""
+    return strmid(TargetString, BregExp_StartP.i - varptr(TargetString), BregExp_EndP.i - BregExp_StartP.i)
+
+#defcfunc BMGetPos int i 
+    if pBregExp = 0 : dialog "BREGEXP Error:\n 直前の操作がBMatchではありません" : return -1
+    if i>BregExp_nParens : return -1
+    return BregExp_StartP.i - varptr(TargetString) - startPos*CompatiMode
+
+#defcfunc BMGetLen int i 
+    if pBregExp = 0 : dialog "BREGEXP Error:\n 直前の操作がBMatchではありません" : return -1
+    if i>BregExp_nParens : return -1
+    return BregExp_EndP.i - BregExp_StartP.i
+
+#defcfunc BMGetNextPos
+    if pBregExp = 0 : dialog "BREGEXP Error:\n 直前の操作がBMatchではありません" : return -1
+    return  BregExp_EndP.0 - varptr(TargetString) - startPos*CompatiMode
+
+#deffunc BSubst var target, str PatternText, local output
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+
+    pattern = PatternText
+    if peek(pattern,0) ! 's' {
+        dialog "BREGEXP Error:\n BSubstのパターンは 's/～/～/' の形式で書いてください。 \nPatternText: "+PatternText
+        return -1
+    }
+    
+    _BSubst varptr(pattern), varptr(target), varptr(target)+strlen(target), varptr(pBregExp), varptr(BM_err_info)
+    if stat : count = stat : else : return 0
+    
+    dupptr BregExp, pBregExp, 44, vartype("int")
+    dupptr output, BregExp.0, BregExp.1 - BregExp.0,vartype("str")
+    target = strmid(output, 0, BregExp.1 - BregExp.0)
+
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+    return count
+
+#deffunc BTrans var target, str PatternText, local output
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+    
+    pattern = PatternText
+    if peek(pattern,0) ! 't' | peek(pattern,1) ! 'r' {
+        dialog "BREGEXP Error:\n BSubstのパターンは 'tr/～/～/' の形式で書いてください。 \nPatternText: "+PatternText
+        return -1
+    }
+
+    _BTrans varptr(pattern), varptr(target), varptr(target)+strlen(target), varptr(pBregExp), varptr(BM_err_info)
+    if stat : count = stat : else : return 0
+
+    dupptr BregExp, pBregExp, 44, vartype("int")
+    dupptr output, BregExp.0, BregExp.1 - BregExp.0,vartype("str")
+    target = strmid(output, 0, BregExp.1 - BregExp.0)
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+    return count
+
+#deffunc BSplit array Output, var target, str PatternText, int MaxCount
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+
+    sdim output,64
+
+    pattern = PatternText
+    _BSplit varptr(pattern), varptr(target), varptr(target)+strlen(target), MaxCount, varptr(pBregExp), varptr(BM_err_info)
+    if stat : count = stat : else : return 0
+    
+    dupptr BregExp, pBregExp, 44, vartype("int")
+    dupptr ptr, BregExp.3, 8*count, vartype("int")
+
+    repeat count
+        output.cnt = strmid(target, ptr(cnt*2)-varptr(target), ptr(cnt*2+1)-ptr(cnt*2))
+    loop
+    BReg_SafeFree pBregExp : pBregExp = 0 ;// NULL
+
+    return count
+
+#deffunc BRegexpVersion
+    _BRegexpVersion 
+    return strf("%s",stat)
+
+#deffunc initBRegExp@mod_BRegExp
+    sdim BM_err_info, 80
+    CompatiMode = 1
+    return
+
+#deffunc deInitBRegExp@mod_BRegExp onexit
+    BReg_SafeFree pBRegExp
+    return
+
+#defcfunc BRegGetErrorMsg
+    return BM_err_info
+
+#deffunc BRegInstrCompatibleMode int i
+    if i : CompatiMode = 1 : else : CompatiMode = 0
+    return
+
+#global
+initBRegExp@mod_BRegExp
+
+#endif
+
+#if 0 //////////////////////// テスト＆サンプル
+
+pos 10,10
+
+BRegexpVersion
+mes refstr
+mes
+
+target = "本日は晴天なり！"
+mes "target = \"本日は晴天なり！\""
+s = BMatch(target, 0, "m/は(.*?)な(.*?)！/")
+mes "BMatch(target, 0, \"m/は(.*?)な(.*?)！/\") :" + s
+
+// 以下直前マッチの結果を返す。注意:targetの文字列が変更されるまで有効
+mes "BMGetStr(0) : "+ BMGetStr(0) // マッチした文字列そのもの 
+mes "BMGetStr(1) : "+ BMGetStr(1) // 左から１番目の( )の中身 RegExp.$1に該当
+mes "BMGetStr(2) : "+ BMGetStr(2) // 左から２番目の( )の中身 RegExp.$2に該当
+mes "BMGetPos(2) : "+ BMGetPos(2) // 左から２番目の( )の位置
+mes "BMGetLen(2) : "+ BMGetLen(2) // 左から２番目の( )の位置
+mes
+
+target = "本日は晴天なり！"
+BSubst target, "s/^(.*?)は(.*?)な(.*?)$/[$1]は[$2]のような[$3]です。/g"
+mes target
+
+target = "This is a pen."
+BSubst target, "s/is/XX/"
+mes target
+target = "This is a pen."
+BSubst target, "s/is/XX/g"
+mes target
+target = "abcdefg012345opqrs"
+BTrans target, "tr/a-z0-9/A-Z_/"
+mes target
+
+target = "アイウエオカキクケコ"
+BTrans target, "tr/0-9/A-Z/"
+mes target
+
+target = "あ,か,さ,た,な"
+BSplit list, target, "/,/"
+repeat stat
+    mes "list."+cnt+ " : "+list.cnt
+loop
+
+#endif

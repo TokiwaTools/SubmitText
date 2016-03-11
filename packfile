@@ -1,0 +1,13 @@
+;
+;	source generated packfile
+;
++encode.as
++hspext.as
++inim2.hsp
++user32.as
++bregexp.hsp
++tkw.hsp
++mod_menu.as
+;!name=submit text
+;!hide=1
++start.ax
